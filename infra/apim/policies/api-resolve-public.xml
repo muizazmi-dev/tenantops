@@ -1,0 +1,16 @@
+<!--
+  tenant-api /resolve endpoint policy.
+  Unauthenticated by design (caller is identifying themselves by host/slug),
+  but rate-limited aggressively to deter enumeration.
+-->
+<policies>
+  <inbound>
+    <base />
+    <rate-limit-by-key calls="120" renewal-period="60" counter-key="@(context.Request.IpAddress)" />
+    <!-- No JWT; no x-tenant-id injection. Strip any inbound value. -->
+    <set-header name="x-tenant-id" exists-action="delete" />
+  </inbound>
+  <backend><base /></backend>
+  <outbound><base /></outbound>
+  <on-error><base /></on-error>
+</policies>

@@ -1,0 +1,97 @@
+<!--
+  TenantOps — tenant-api & core-api & ai-orchestrator policy
+  Applied at API scope. Enforces authentication and injects a validated
+  tenant identifier that backend services can trust.
+
+  Flow:
+    1. validate-jwt  — verify the Entra ID bearer token (issuer, audience,
+                       signature, lifetime). Primary path.
+       If Entra validation fails, fall back to the local JWT scheme
+       (issued by identity-api) using a second validate-jwt block.
+
+    2. Extract canonical tenantId from the token claim `tid_app`. This is
+       the application-level tenant id that we ourselves issue (see
+       services/identity-api and the Entra app-role claim mapping).
+
+    3. Inject x-tenant-id header from the VALIDATED claim only. The backend
+       must NEVER trust a client-supplied x-tenant-id — this policy strips
+       any inbound value before writing the authoritative one.
+
+    4. Per-tenant + per-user rate limit (60 req/min each).
+
+  Docs:
+    validate-jwt:        https://learn.microsoft.com/azure/api-management/validate-jwt-policy
+    rate-limit-by-key:   https://learn.microsoft.com/azure/api-management/rate-limit-by-key-policy
+    set-header:          https://learn.microsoft.com/azure/api-management/set-header-policy
+-->
+<policies>
+  <inbound>
+    <base />
+
+    <!-- Strip any caller-supplied x-tenant-id so it cannot pre-empt the one we inject. -->
+    <set-header name="x-tenant-id" exists-action="delete" />
+
+    <!-- ===== 1a. Primary: Entra ID ===================================== -->
+    <choose>
+      <when condition="@(context.Request.Headers.GetValueOrDefault(&quot;Authorization&quot;, &quot;&quot;).StartsWith(&quot;Bearer &quot;))">
+        <validate-jwt header-name="Authorization"
+                      failed-validation-httpcode="401"
+                      failed-validation-error-message="Invalid token"
+                      require-expiration-time="true"
+                      require-signed-tokens="true"
+                      output-token-variable-name="jwt">
+          <openid-config url="https://login.microsoftonline.com/{{entra_tenant_id}}/v2.0/.well-known/openid-configuration" />
+          <audiences>
+            <audience>{{entra_audience}}</audience>
+          </audiences>
+          <issuers>
+            <issuer>https://login.microsoftonline.com/{{entra_tenant_id}}/v2.0</issuer>
+            <issuer>{{local_jwt_issuer}}</issuer>
+          </issuers>
+          <required-claims>
+            <claim name="tid_app" match="any" />
+          </required-claims>
+        </validate-jwt>
+      </when>
+      <otherwise>
+        <return-response>
+          <set-status code="401" reason="Unauthorized" />
+          <set-body>Missing bearer token.</set-body>
+        </return-response>
+      </otherwise>
+    </choose>
+
+    <!-- ===== 2 & 3. Extract claim → inject validated header ============ -->
+    <set-variable name="appTenantId"
+                  value="@(((Jwt)context.Variables[&quot;jwt&quot;]).Claims.GetValueOrDefault(&quot;tid_app&quot;, &quot;&quot;))" />
+
+    <choose>
+      <when condition="@(string.IsNullOrWhiteSpace((string)context.Variables[&quot;appTenantId&quot;]))">
+        <return-response>
+          <set-status code="403" reason="Forbidden" />
+          <set-body>Token missing required tid_app claim.</set-body>
+        </return-response>
+      </when>
+    </choose>
+
+    <set-header name="x-tenant-id" exists-action="override">
+      <value>@((string)context.Variables["appTenantId"])</value>
+    </set-header>
+
+    <!-- Mirror the subject too, so backends can correlate audit logs -->
+    <set-header name="x-user-id" exists-action="override">
+      <value>@(((Jwt)context.Variables["jwt"]).Claims.GetValueOrDefault("oid",
+                ((Jwt)context.Variables["jwt"]).Claims.GetValueOrDefault("sub", "")))</value>
+    </set-header>
+
+    <!-- ===== 4. Per-tenant + per-user rate limits ====================== -->
+    <rate-limit-by-key calls="60" renewal-period="60"
+                       counter-key="@((string)context.Variables[&quot;appTenantId&quot;])" />
+    <rate-limit-by-key calls="60" renewal-period="60"
+                       counter-key="@(((Jwt)context.Variables[&quot;jwt&quot;]).Claims.GetValueOrDefault(&quot;oid&quot;, &quot;anon&quot;))" />
+  </inbound>
+
+  <backend><base /></backend>
+  <outbound><base /></outbound>
+  <on-error><base /></on-error>
+</policies>

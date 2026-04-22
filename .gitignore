@@ -1,0 +1,46 @@
+# Secrets
+.env
+.env.local
+.env.*.local
+*.pfx
+*.pem
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.turbo/
+npm-debug.log*
+yarn-debug.log*
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+coverage/
+TestResults/

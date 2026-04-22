@@ -1,0 +1,78 @@
+--progress is a global compose flag, better use `docker compose --progress xx build ...
+ Image tenantops-ai-orchestrator Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 756B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 796B 0.0s done
+#2 DONE 0.0s
+
+#3 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#3 ...
+
+#4 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#3 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#3 DONE 1.6s
+
+#5 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#5 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+#5 CACHED
+
+#6 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:8.0
+#6 DONE 0.2s
+
+#7 [internal] load metadata for mcr.microsoft.com/dotnet/aspnet:8.0
+#7 DONE 0.2s
+
+#8 [internal] load .dockerignore
+#8 transferring context: 2B 0.0s done
+#8 DONE 0.0s
+
+#9 [runtime 1/3] FROM mcr.microsoft.com/dotnet/aspnet:8.0@sha256:8c7de8ca26baa56530cdc3d55b5563420ee2a302619ad808c53ec64613143771
+#9 resolve mcr.microsoft.com/dotnet/aspnet:8.0@sha256:8c7de8ca26baa56530cdc3d55b5563420ee2a302619ad808c53ec64613143771 0.1s done
+#9 DONE 0.1s
+
+#10 [runtime 2/3] WORKDIR /app
+#10 CACHED
+
+#11 [build 1/8] FROM mcr.microsoft.com/dotnet/sdk:8.0@sha256:ec47373b40fc22a31c891c5be8df83f8cbadc24e785b10899545e33a1a1c2183
+#11 resolve mcr.microsoft.com/dotnet/sdk:8.0@sha256:ec47373b40fc22a31c891c5be8df83f8cbadc24e785b10899545e33a1a1c2183 0.1s done
+#11 DONE 0.1s
+
+#12 [build 2/8] WORKDIR /src
+#12 CACHED
+
+#13 [internal] load build context
+#13 transferring context: 23.93kB 0.1s done
+#13 DONE 0.1s
+
+#14 [build 3/8] COPY services/_shared/TenantOps.Shared/TenantOps.Shared.csproj services/_shared/TenantOps.Shared/
+#14 DONE 0.1s
+
+#15 [build 4/8] COPY services/ai-orchestrator/TenantOps.AiOrchestrator.csproj services/ai-orchestrator/
+#15 DONE 0.1s
+
+#16 [build 5/8] RUN dotnet restore services/ai-orchestrator/TenantOps.AiOrchestrator.csproj
+#16 2.109   Determining projects to restore...
+#16 13.67 /src/services/ai-orchestrator/TenantOps.AiOrchestrator.csproj : warning NU1608: Detected package version outside of dependency constraint: Microsoft.SemanticKernel.Connectors.AzureOpenAI 1.30.0 requires Azure.AI.OpenAI (= 2.1.0-beta.2) but version Azure.AI.OpenAI 2.1.0 was resolved.
+#16 14.30 /src/services/ai-orchestrator/TenantOps.AiOrchestrator.csproj : error NU1107: Version conflict detected for OpenAI. Install/reference OpenAI 2.1.0 directly to project TenantOps.AiOrchestrator to resolve this issue. 
+#16 14.30 /src/services/ai-orchestrator/TenantOps.AiOrchestrator.csproj : error NU1107:  TenantOps.AiOrchestrator -> Azure.AI.OpenAI 2.1.0 -> OpenAI (>= 2.1.0) 
+#16 14.30 /src/services/ai-orchestrator/TenantOps.AiOrchestrator.csproj : error NU1107:  TenantOps.AiOrchestrator -> Microsoft.SemanticKernel.Connectors.AzureOpenAI 1.30.0 -> Microsoft.SemanticKernel.Connectors.OpenAI 1.30.0 -> OpenAI (= 2.1.0-beta.2).
+#16 14.36   Restored /src/services/_shared/TenantOps.Shared/TenantOps.Shared.csproj (in 11.35 sec).
+#16 14.36   Failed to restore /src/services/ai-orchestrator/TenantOps.AiOrchestrator.csproj (in 11.35 sec).
+#16 ERROR: process "/bin/sh -c dotnet restore services/ai-orchestrator/TenantOps.AiOrchestrator.csproj" did not complete successfully: exit code: 1
+------
+ > [build 5/8] RUN dotnet restore services/ai-orchestrator/TenantOps.AiOrchestrator.csproj:
+2.109   Determining projects to restore...
+13.67 /src/services/ai-orchestrator/TenantOps.AiOrchestrator.csproj : warning NU1608: Detected package version outside of dependency constraint: Microsoft.SemanticKernel.Connectors.AzureOpenAI 1.30.0 requires Azure.AI.OpenAI (= 2.1.0-beta.2) but version Azure.AI.OpenAI 2.1.0 was resolved.
+14.30 /src/services/ai-orchestrator/TenantOps.AiOrchestrator.csproj : error NU1107: Version conflict detected for OpenAI. Install/reference OpenAI 2.1.0 directly to project TenantOps.AiOrchestrator to resolve this issue. 
+14.30 /src/services/ai-orchestrator/TenantOps.AiOrchestrator.csproj : error NU1107:  TenantOps.AiOrchestrator -> Azure.AI.OpenAI 2.1.0 -> OpenAI (>= 2.1.0) 
+14.30 /src/services/ai-orchestrator/TenantOps.AiOrchestrator.csproj : error NU1107:  TenantOps.AiOrchestrator -> Microsoft.SemanticKernel.Connectors.AzureOpenAI 1.30.0 -> Microsoft.SemanticKernel.Connectors.OpenAI 1.30.0 -> OpenAI (= 2.1.0-beta.2).
+14.36   Restored /src/services/_shared/TenantOps.Shared/TenantOps.Shared.csproj (in 11.35 sec).
+14.36   Failed to restore /src/services/ai-orchestrator/TenantOps.AiOrchestrator.csproj (in 11.35 sec).
+------
+failed to solve: process "/bin/sh -c dotnet restore services/ai-orchestrator/TenantOps.AiOrchestrator.csproj" did not complete successfully: exit code: 1
+

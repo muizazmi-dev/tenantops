@@ -1,0 +1,16 @@
+# syntax=docker/dockerfile:1.7
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY services/_shared/TenantOps.Shared/TenantOps.Shared.csproj services/_shared/TenantOps.Shared/
+COPY services/ai-orchestrator/TenantOps.AiOrchestrator.csproj services/ai-orchestrator/
+RUN dotnet restore services/ai-orchestrator/TenantOps.AiOrchestrator.csproj
+COPY services/_shared/ services/_shared/
+COPY services/ai-orchestrator/ services/ai-orchestrator/
+RUN dotnet publish services/ai-orchestrator/TenantOps.AiOrchestrator.csproj -c Release -o /app /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+COPY --from=build /app .
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+ENTRYPOINT ["dotnet", "TenantOps.AiOrchestrator.dll"]

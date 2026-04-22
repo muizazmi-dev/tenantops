@@ -1,0 +1,120 @@
+services:
+  sql:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: tenantops-sql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SQL_SA_PASSWORD:-Your_Strong_Passw0rd!}
+      MSSQL_PID: Developer
+    ports: ["1433:1433"]
+    volumes:
+      - sqldata:/var/opt/mssql
+      - ./infra/sql/migrations:/migrations:ro
+      - ./infra/sql/seed:/seed:ro
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P $${MSSQL_SA_PASSWORD} -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: tenantops-azurite
+    command: "azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0"
+    ports: ["10000:10000", "10001:10001", "10002:10002"]
+
+  identity-api:
+    build:
+      context: .
+      dockerfile: services/identity-api/Dockerfile
+    container_name: tenantops-identity-api
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: ${SQL_CONNECTION_STRING}
+      Jwt__Issuer: ${LOCAL_JWT_ISSUER}
+      Jwt__Audience: ${LOCAL_JWT_AUDIENCE}
+      Jwt__Key: ${LOCAL_JWT_KEY}
+    depends_on:
+      sql:
+        condition: service_healthy
+    ports: ["5004:8080"]
+
+  tenant-api:
+    build:
+      context: .
+      dockerfile: services/tenant-api/Dockerfile
+    container_name: tenantops-tenant-api
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: ${SQL_CONNECTION_STRING}
+      Jwt__Issuer: ${LOCAL_JWT_ISSUER}
+      Jwt__Audience: ${LOCAL_JWT_AUDIENCE}
+      Jwt__Key: ${LOCAL_JWT_KEY}
+      Entra__Issuer: ${ENTRA_ISSUER}
+      Entra__Audience: ${ENTRA_AUDIENCE}
+    depends_on:
+      sql:
+        condition: service_healthy
+    ports: ["5001:8080"]
+
+  core-api:
+    build:
+      context: .
+      dockerfile: services/core-api/Dockerfile
+    container_name: tenantops-core-api
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: ${SQL_CONNECTION_STRING}
+      Jwt__Issuer: ${LOCAL_JWT_ISSUER}
+      Jwt__Audience: ${LOCAL_JWT_AUDIENCE}
+      Jwt__Key: ${LOCAL_JWT_KEY}
+      Entra__Issuer: ${ENTRA_ISSUER}
+      Entra__Audience: ${ENTRA_AUDIENCE}
+    depends_on:
+      sql:
+        condition: service_healthy
+    ports: ["5002:8080"]
+
+  ai-orchestrator:
+    build:
+      context: .
+      dockerfile: services/ai-orchestrator/Dockerfile
+    container_name: tenantops-ai
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: ${SQL_CONNECTION_STRING}
+      Jwt__Issuer: ${LOCAL_JWT_ISSUER}
+      Jwt__Audience: ${LOCAL_JWT_AUDIENCE}
+      Jwt__Key: ${LOCAL_JWT_KEY}
+      AzureOpenAI__Endpoint: ${AZURE_OPENAI_ENDPOINT}
+      AzureOpenAI__ApiKey: ${AZURE_OPENAI_API_KEY}
+      AzureOpenAI__ChatDeployment: ${AZURE_OPENAI_CHAT_DEPLOYMENT}
+      AzureOpenAI__EmbeddingDeployment: ${AZURE_OPENAI_EMBEDDING_DEPLOYMENT}
+      AzureOpenAI__ApiVersion: ${AZURE_OPENAI_API_VERSION}
+      AzureSearch__Endpoint: ${AZURE_SEARCH_ENDPOINT}
+      AzureSearch__AdminKey: ${AZURE_SEARCH_ADMIN_KEY}
+      AzureSearch__IndexName: ${AZURE_SEARCH_INDEX}
+      AzureSearch__ApiVersion: ${AZURE_SEARCH_API_VERSION}
+    depends_on:
+      sql:
+        condition: service_healthy
+    ports: ["5003:8080"]
+
+  web:
+    build:
+      context: apps/web
+      dockerfile: Dockerfile
+    container_name: tenantops-web
+    environment:
+      NODE_ENV: production
+      TENANT_API_BASE_URL: http://tenant-api:8080
+      CORE_API_BASE_URL: http://core-api:8080
+      AI_API_BASE_URL: http://ai-orchestrator:8080
+      IDENTITY_API_BASE_URL: http://identity-api:8080
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-TenantOps}
+      NEXT_PUBLIC_APIM_BASE_URL: ${NEXT_PUBLIC_APIM_BASE_URL:-http://localhost:8000}
+    depends_on: [tenant-api, core-api, ai-orchestrator, identity-api]
+    ports: ["3000:3000"]
+
+volumes:
+  sqldata:

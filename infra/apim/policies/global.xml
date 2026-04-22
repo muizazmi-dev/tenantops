@@ -1,0 +1,48 @@
+<!--
+  TenantOps — APIM global policy
+  Applied to all inbound requests before API-specific policies run.
+
+  Responsibilities:
+    * Basic hygiene (CORS, security headers)
+    * Rate-limit by subscription key
+    * Forward correlation ID
+
+  Docs: https://learn.microsoft.com/azure/api-management/api-management-policies
+-->
+<policies>
+  <inbound>
+    <base />
+
+    <!-- Correlation ID: echo or mint -->
+    <set-variable name="correlationId" value="@(context.Request.Headers.GetValueOrDefault(&quot;x-correlation-id&quot;, Guid.NewGuid().ToString(&quot;N&quot;)))" />
+    <set-header name="x-correlation-id" exists-action="override">
+      <value>@((string)context.Variables["correlationId"])</value>
+    </set-header>
+
+    <!-- Global rate limit: 300 req/min per subscription key -->
+    <rate-limit-by-key calls="300" renewal-period="60"
+                       counter-key="@(context.Subscription?.Key ?? context.Request.IpAddress)" />
+
+    <!-- CORS: Azure Front Door origin is injected at deploy time -->
+    <cors allow-credentials="true">
+      <allowed-origins>
+        <origin>https://{{frontdoor_endpoint}}</origin>
+      </allowed-origins>
+      <allowed-methods><method>GET</method><method>POST</method><method>PUT</method><method>DELETE</method><method>OPTIONS</method></allowed-methods>
+      <allowed-headers><header>*</header></allowed-headers>
+    </cors>
+  </inbound>
+
+  <backend><base /></backend>
+
+  <outbound>
+    <base />
+    <set-header name="x-correlation-id" exists-action="override">
+      <value>@((string)context.Variables["correlationId"])</value>
+    </set-header>
+    <set-header name="x-powered-by"   exists-action="delete" />
+    <set-header name="server"         exists-action="delete" />
+  </outbound>
+
+  <on-error><base /></on-error>
+</policies>
