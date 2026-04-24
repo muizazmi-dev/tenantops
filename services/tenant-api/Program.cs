@@ -11,9 +11,7 @@ var app = builder.Build();
 app.UseTenantOpsDefaults();
 
 // --------------------------------------------------------------------------
-// PUBLIC RESOLVER — called by APIM policy AND by Next.js SSR to determine
-// which tenant owns the incoming host or the /t/{slug} route. No auth needed
-// because the domain/slug IS the identifier. Cached aggressively.
+// PUBLIC RESOLVER — called by APIM policy AND by Next.js SSR.
 // --------------------------------------------------------------------------
 app.MapGet("/resolve", async (string? host, string? slug,
         IMemoryCache cache, ITenantDbConnectionFactory db) =>
@@ -39,8 +37,7 @@ app.MapGet("/resolve", async (string? host, string? slug,
 }).AllowAnonymous();
 
 // --------------------------------------------------------------------------
-// PLATFORM ADMIN — list all tenants (requires platform-admin role claim).
-// Used by the admin UI panel to show per-tenant usage.
+// PLATFORM ADMIN — list all tenants.
 // --------------------------------------------------------------------------
 app.MapGet("/admin/tenants", async (ITenantDbConnectionFactory db, HttpContext ctx) =>
 {
@@ -52,9 +49,7 @@ app.MapGet("/admin/tenants", async (ITenantDbConnectionFactory db, HttpContext c
 }).RequireAuthorization();
 
 // --------------------------------------------------------------------------
-// Per-tenant branding fetch — trust the validated x-tenant-id header (from
-// APIM) or JWT claim. Caller cannot switch tenant because the middleware
-// rejects header/claim mismatches.
+// Per-tenant branding fetch.
 // --------------------------------------------------------------------------
 app.MapGet("/me/tenant", async (HttpContext ctx, IMemoryCache cache, ITenantDbConnectionFactory db) =>
 {
@@ -63,9 +58,6 @@ app.MapGet("/me/tenant", async (HttpContext ctx, IMemoryCache cache, ITenantDbCo
     if (cache.TryGetValue<TenantBranding?>(key, out var cached) && cached is not null)
         return Results.Ok(cached);
 
-    await using var conn = await db.OpenAsync();
-    // The RLS predicate will gate Users/Documents/Tickets; Tenants is read via
-    // platform-admin connection instead. Here we do a direct lookup by PK.
     var row = await cache.GetOrCreateAsync(key, async entry =>
     {
         entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
@@ -77,8 +69,59 @@ app.MapGet("/me/tenant", async (HttpContext ctx, IMemoryCache cache, ITenantDbCo
     return row is null ? Results.NotFound() : Results.Ok(row);
 }).RequireAuthorization();
 
+// --------------------------------------------------------------------------
+// POST /me/tenant/logo — store PNG logo as a base64 data URL in ThemeJson.
+// Accepts JSON { logoBase64: "...", mime: "image/png" }.
+// PNG magic bytes are validated server-side.
+// --------------------------------------------------------------------------
+app.MapPost("/me/tenant/logo", async (HttpContext ctx, LogoUploadDto dto,
+        ITenantDbConnectionFactory db, IMemoryCache cache) =>
+{
+    var tenantId = (Guid)ctx.Items["TenantId"]!;
+
+    if (dto.Mime != "image/png")
+        return Results.BadRequest("Only PNG images are accepted.");
+
+    byte[] bytes;
+    try { bytes = Convert.FromBase64String(dto.LogoBase64); }
+    catch { return Results.BadRequest("Invalid base64 data."); }
+
+    if (bytes.Length > 256 * 1024)
+        return Results.BadRequest("Logo must be under 256 KB.");
+
+    // Validate PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
+    if (bytes.Length < 8 || !bytes.Take(8).SequenceEqual(Constants.PngMagic))
+        return Results.BadRequest("File is not a valid PNG.");
+
+    var dataUrl = $"data:image/png;base64,{dto.LogoBase64}";
+
+    await using var conn = await db.OpenPlatformAdminAsync();
+
+    // JSON_MODIFY keeps the rest of the ThemeJson intact (primary, accent, etc.)
+    await conn.ExecuteAsync(@"
+        UPDATE app.Tenants
+        SET ThemeJson = JSON_MODIFY(ISNULL(ThemeJson, '{}'), '$.logo', @logo)
+        WHERE TenantId = @tenantId;",
+        new { logo = dataUrl, tenantId });
+
+    // Evict resolve + branding caches so the new logo is visible on next request.
+    var slug = await conn.QuerySingleOrDefaultAsync<string>(
+        @"SELECT Slug FROM app.Tenants WHERE TenantId=@tenantId;", new { tenantId });
+
+    cache.Remove($"branding:{tenantId}");
+    if (slug is not null) cache.Remove($"tenant::{slug}");
+
+    return Results.Ok(new { uploaded = true });
+}).RequireAuthorization();
+
 app.MapGet("/", () => Results.Ok(new { service = "tenant-api", version = "1.0" }));
 
 app.Run();
 
 public record TenantBranding(Guid TenantId, string Slug, string? Domain, string Name, string ThemeJson);
+public record LogoUploadDto(string LogoBase64, string Mime);
+
+static class Constants
+{
+    public static readonly byte[] PngMagic = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+}

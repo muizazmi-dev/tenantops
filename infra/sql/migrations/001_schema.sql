@@ -29,9 +29,10 @@ BEGIN
         ThemeJson   NVARCHAR(MAX) NOT NULL CONSTRAINT DF_Tenants_Theme DEFAULT (N'{}'),
         CreatedAt   DATETIME2(3)  NOT NULL CONSTRAINT DF_Tenants_Created DEFAULT SYSUTCDATETIME(),
         IsActive    BIT           NOT NULL CONSTRAINT DF_Tenants_Active DEFAULT 1,
-        CONSTRAINT UQ_Tenants_Slug   UNIQUE (Slug),
-        CONSTRAINT UQ_Tenants_Domain UNIQUE (Domain)
+        CONSTRAINT UQ_Tenants_Slug UNIQUE (Slug)
     );
+    -- Filtered: allow multiple tenants with no custom domain (Domain = NULL)
+    CREATE UNIQUE INDEX UQ_Tenants_Domain ON app.Tenants(Domain) WHERE Domain IS NOT NULL;
 END;
 GO
 

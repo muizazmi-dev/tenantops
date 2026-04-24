@@ -53,6 +53,7 @@ public sealed class TenantResolutionMiddleware
         if (path.StartsWith("/health", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/auth/login", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/auth/register", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/auth/admin-login", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/resolve", StringComparison.OrdinalIgnoreCase) ||
             path.Equals("/", StringComparison.OrdinalIgnoreCase))
         {
