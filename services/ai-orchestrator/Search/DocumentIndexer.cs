@@ -54,7 +54,7 @@ public sealed class DocumentIndexer
         // 4) Upload
         var batch = IndexDocumentsBatch.Upload(chunks.Select((text, i) => new SearchDocument
         {
-            ["chunkId"]       = $"{doc.DocumentId}:{i:D4}",
+            ["chunkId"]       = $"{doc.DocumentId}_{i:D4}",
             ["tenantId"]      = doc.TenantId.ToString(),          // <-- isolation key
             ["documentId"]    = doc.DocumentId.ToString(),
             ["title"]         = doc.Title,

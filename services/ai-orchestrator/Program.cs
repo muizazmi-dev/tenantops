@@ -1,3 +1,5 @@
+using Azure;
+using Azure.AI.OpenAI;
 using Dapper;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -19,13 +21,16 @@ var aoaiEndpoint = cfg["AzureOpenAI:Endpoint"]
     ?? throw new InvalidOperationException("AzureOpenAI:Endpoint missing");
 var aoaiKey = cfg["AzureOpenAI:ApiKey"]
     ?? throw new InvalidOperationException("AzureOpenAI:ApiKey missing");
-var chatDeployment = cfg["AzureOpenAI:ChatDeployment"] ?? "gpt-4o-mini";
+var chatDeployment  = cfg["AzureOpenAI:ChatDeployment"]      ?? "gpt-4o-mini";
 var embedDeployment = cfg["AzureOpenAI:EmbeddingDeployment"] ?? "text-embedding-3-small";
+
+// Shared client — both chat and embeddings target the same endpoint/key.
+var azureClient = new AzureOpenAIClient(new Uri(aoaiEndpoint), new AzureKeyCredential(aoaiKey));
 
 #pragma warning disable SKEXP0010
 var kernelBuilder = Kernel.CreateBuilder();
-kernelBuilder.AddAzureOpenAIChatCompletion(chatDeployment, aoaiEndpoint, aoaiKey);
-kernelBuilder.AddAzureOpenAITextEmbeddingGeneration(embedDeployment, aoaiEndpoint, aoaiKey);
+kernelBuilder.AddAzureOpenAIChatCompletion(chatDeployment, azureClient);
+kernelBuilder.AddAzureOpenAITextEmbeddingGeneration(embedDeployment, azureClient);
 var kernel = kernelBuilder.Build();
 #pragma warning restore SKEXP0010
 
