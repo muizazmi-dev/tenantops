@@ -26,18 +26,15 @@ tests/integration          RLS isolation and AI Search tenant-filter tests
 
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — layer-by-layer breakdown with mermaid
 - **[docs/SETUP.md](docs/SETUP.md)** — local and Azure deploy instructions
-- **[docs/DEMO.md](docs/DEMO.md)** — step-by-step demo script
 - **[docs/THREAT_MODEL.md](docs/THREAT_MODEL.md)** — isolation proof points
-- **[docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md)** — defaults we took
 
 ## Run locally in 60 seconds
 
 ```bash
 cp .env.example .env
 make up          # docker-compose up -d + migrations + seed
-make seed-docs   # index sample docs for Contoso + Fabrikam
-open http://localhost:3000/t/contoso
-open http://localhost:3000/t/fabrikam
+
+open http://localhost:3000
 ```
 
 ## Deploy to Azure
