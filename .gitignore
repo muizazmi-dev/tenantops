@@ -44,3 +44,7 @@ Thumbs.db
 dist/
 coverage/
 TestResults/
+
+#Claude files
+.claude
+generate_pptx.py

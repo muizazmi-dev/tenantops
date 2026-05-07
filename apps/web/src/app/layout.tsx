@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { getCurrentTenant } from '@/lib/currentTenant';
+import Script from 'next/script';
+import UIOverlay from '@/components/UIOverlay';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -9,14 +11,20 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const tenant = await getCurrentTenant();
+  const tenant    = await getCurrentTenant();
   const isSignedIn = !!cookies().get('tenantops_token')?.value;
-
-  const logoSrc = tenant?.theme.logo || '/logos/default.svg';
+  const logoSrc   = tenant?.theme.logo || '/logos/default.svg';
 
   return (
-    <html lang="en">
+    <html lang="en" data-theme="dark">
+      {/* Runs synchronously before first paint — prevents flash of wrong theme */}
+      <Script id="theme-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{
+        __html: `try{var t=localStorage.getItem('tenantops-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}`
+      }} />
+
       <body>
+        <UIOverlay />
+
         <header className="site-header">
           <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}

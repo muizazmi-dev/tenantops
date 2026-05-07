@@ -19,6 +19,32 @@
   --mono: 'Courier New', Courier, monospace;
 }
 
+/* ── Light mode overrides ────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg:          #f0f0e8;
+  --bg-surface:  #e2e2d8;
+  --bg-card:     #fafaf4;
+  --text:        #1a1a2e;
+  --muted:       #7a7a8a;
+  --glow-green:  0 0 6px rgba(0,180,60,.45),  0 0 18px rgba(0,180,60,.2);
+  --glow-purple: 0 0 6px rgba(120,0,200,.45), 0 0 18px rgba(120,0,200,.2);
+  --glow-cyan:   0 0 6px rgba(0,150,200,.45), 0 0 18px rgba(0,150,200,.2);
+}
+[data-theme="light"] body::before {
+  background: repeating-linear-gradient(
+    0deg, transparent 0px, transparent 3px,
+    rgba(0,0,0,.018) 3px, rgba(0,0,0,.018) 4px
+  );
+}
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select { background: var(--bg-surface); color: var(--text); }
+[data-theme="light"] code   { background: var(--bg-surface); }
+[data-theme="light"] pre    { background: var(--bg-surface); color: var(--green); }
+/* keep hover text dark/readable on light bg */
+[data-theme="light"] button:hover:not(:disabled),
+[data-theme="light"] .btn:hover { color: #07070f; }
+
 /* ---------- reset ---------- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -299,3 +325,55 @@ hr { border: none; border-top: 1px solid rgba(0,255,65,.15); margin: 18px 0; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--green); }
 ::-webkit-scrollbar-thumb:hover { background: var(--purple); box-shadow: var(--glow-purple); }
+
+/* ── Particle canvas z-stacking: content must sit above z-index:1 canvas ── */
+.container   { position: relative; z-index: 2; }
+.site-footer { position: relative; z-index: 2; }
+
+/* ── Floating controls (top-left) ────────────────────────────────────────── */
+.floating-controls {
+  position: fixed;
+  top: 68px;
+  left: 16px;
+  z-index: 9997;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ctrl-btn {
+  width: 40px !important;
+  height: 40px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px !important;
+  letter-spacing: 0 !important;
+  background: var(--bg-surface) !important;
+  opacity: 0.88;
+  transition: opacity .15s, box-shadow .15s, background .12s !important;
+}
+.ctrl-btn:hover { opacity: 1; }
+.ctrl-btn--cyan { box-shadow: var(--glow-cyan) !important; }
+
+/* ── Autoplay prompt banner ──────────────────────────────────────────────── */
+.autoplay-prompt {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--cyan);
+  box-shadow: var(--glow-cyan);
+  padding: 12px 20px;
+  z-index: 9998;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--cyan);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  white-space: nowrap;
+}
